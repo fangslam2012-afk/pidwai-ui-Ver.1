@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคำนวณราคา ปิดไว</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- นำเข้าไลบรารี html2pdf.js สำหรับสร้าง PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background: #fff; max-width: 1100px; width: 100%; padding: 30px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+        .main-title { text-align: center; color: #0275d8; margin-bottom: 5px; margin-top: 0; font-size: 38px; font-weight: 600; }
+        .sub-title { text-align: center; color: #666; margin-top: 0; margin-bottom: 20px; font-size: 20px; font-weight: 400; }
+
+        /* เมนู Tabs */
+        .tab-menu { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; border-bottom: 2px solid #e9ecef; padding-bottom: 15px; }
+        .tab-btn { font-family: 'Kanit', sans-serif; font-size: 16px; font-weight: 500; padding: 10px 25px; border: none; border-radius: 8px; cursor: pointer; background-color: #e9ecef; color: #555; transition: 0.3s; }
+        .tab-btn:hover { background-color: #d6d8db; }
+        .tab-btn.active { background-color: #0275d8; color: white; box-shadow: 0 4px 8px rgba(2, 117, 216, 0.3); }
+
+        .page-content { display: none; }
+        .page-content.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ฟอร์มและ Grid */
+        .category-title { margin-top: 35px; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 2px solid #ccc; color: #444; display: flex; justify-content: space-between; align-items: center; }
+        .toggle-btn { font-size: 13px; color: #555; cursor: pointer; font-weight: 400; background: #e9ecef; padding: 4px 10px; border-radius: 6px; border: 1px solid #ccc; transition: 0.2s; }
+        .toggle-btn:hover { background: #d6d8db; }
+        .shared-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 30px; background: #e9ecef; padding: 20px; border-radius: 8px; align-items: end; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; color: #555; font-size: 13px; }
+        select, input[type="range"], input[type="number"], input[type="text"] { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 15px; font-family: 'Kanit', sans-serif; box-sizing: border-box; background-color: #fff; }
+        input[readonly] { background-color: #d1d5da; color: #444; font-weight: bold; cursor: not-allowed; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+        .product-panel { background: #fafafa; padding: 20px; border-radius: 10px; border: 1px solid #ddd; }
+        .product-panel h3 { text-align: center; margin-top: 0; padding-bottom: 10px; border-bottom: 2px solid; font-size: 18px; line-height: 1.4; }
+        
+        .title-light-green { color: #689f38; border-color: #689f38; } .title-blue { color: #0275d8; border-color: #0275d8; }
+        .title-dark-green { color: #198754; border-color: #198754; } .title-cream { color: #a8824f; border-color: #a8824f; }
+        .title-pink { color: #d63384; border-color: #d63384; } .title-grey { color: #6c757d; border-color: #6c757d; }
+        .title-orange { color: #fd7e14; border-color: #fd7e14; }
+
+        .result-card { color: white; padding: 15px; border-radius: 8px; text-align: center; margin-top: 15px; }
+        .bg-light-green { background: #7cb342; } .bg-blue { background: #0275d8; } 
+        .bg-dark-green { background: #198754; } .bg-cream { background: #fdf2d0; color: #5c4d32; border: 1px solid #e6cca3; }
+        .bg-pink { background: #d63384; } .bg-grey { background: #6c757d; } .bg-orange { background: #fd7e14; }
+        
+        .text-light-green { color: #689f38; } .text-blue { color: #0275d8; } 
+        .text-dark-green { color: #198754; } .text-cream { color: #a8824f; }
+        .text-pink { color: #d63384; } .text-grey { color: #6c757d; } .text-orange { color: #fd7e14; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .slider-value { text-align: right; font-weight: bold; margin-top: 5px; }
+        .result-card h4 { margin: 0; font-size: 16px; font-weight: 300; }
+        .result-card .price { font-size: 32px; font-weight: bold; margin: 5px 0 0 0; }
+        .details { background: #fff; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 14px; border: 1px dashed #ccc; }
+        .details div { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+        .details div:last-child { border-bottom: none; margin-bottom: 0; }
+
+        /* ปุ่มโหลด PDF */
+        .btn-pdf { background-color: #dc3545; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 4px 6px rgba(220, 53, 69, 0.2); }
+        .btn-pdf:hover { background-color: #c82333; box-shadow: 0 6px 12px rgba(220, 53, 69, 0.3); transform: translateY(-2px); }
+
+        /* ใบเสนอราคา */
+        .quotation-panel { padding: 40px; background: #fff; border: 1px solid #ccc; border-radius: 4px; color: #333; }
+        .quote-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px; }
+        .quote-title h2 { margin: 0; color: #333; font-size: 26px; text-align: left; }
+        .quote-title p { margin: 10px 0 0 0; font-size: 14px; font-weight: 400; line-height: 1.5; }
+        .quote-info table { width: 100%; font-size: 14px; text-align: left; }
+        .quote-info th { padding-right: 15px; font-weight: 600; padding-bottom: 5px; }
+        .quote-customer { margin-bottom: 25px; font-size: 14px; display: flex; justify-content: space-between; line-height: 1.6; }
+        .quote-table { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 25px; }
+        .quote-table th, .quote-table td { border: 1px solid #333; padding: 10px; text-align: center; vertical-align: middle; }
+        .quote-table th { background-color: #f4f7f6; font-weight: 600; }
+        .quote-table td:nth-child(2) { text-align: left; font-weight: 500; }
+        
+        .quote-input { width: 60px; text-align: center; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Kanit', sans-serif; background: transparent; }
+        .sign-input { width: 180px; text-align: center; padding: 5px; border: 1px solid #ccc; border-radius: 4px; font-family: 'Kanit', sans-serif; background: transparent; font-size: 14px; margin-top: 5px;}
+        
+        /* ซ่อนขอบ input เวลาปรินต์ PDF เพื่อความสวยงาม */
+        .pdf-mode .quote-input, .pdf-mode .sign-input { border: none !important; appearance: none; -moz-appearance: none; -webkit-appearance: none; padding: 0; font-weight: 500;}
+        .pdf-mode .sign-input { margin-top: 0; }
+        
+        .quote-bottom { display: flex; justify-content: space-between; align-items: flex-start; }
+        .quote-notes { font-size: 13px; color: #555; line-height: 1.6; }
+        .quote-notes strong { color: #d9534f; }
+        .quote-summary-table { width: 320px; border-collapse: collapse; font-size: 15px; }
+        .quote-summary-table td { padding: 8px 12px; border: 1px solid #333; }
+        .quote-summary-table td:first-child { text-align: right; font-weight: 600; background: #f4f7f6; width: 60%; }
+        .quote-summary-table td:last-child { text-align: right; font-weight: bold; }
+        .grand-total { font-size: 18px; color: #0275d8; }
+        .quote-signatures { display: flex; justify-content: space-around; margin-top: 60px; text-align: center; font-size: 14px; }
+        .sign-box { width: 40%; }
+        .sign-line { border-bottom: 1px dashed #333; margin: 0 auto 10px auto; width: 70%; height: 40px; }
+
+        @media (max-width: 768px) {
+            .products-grid { grid-template-columns: 1fr; }
+            .quote-header, .quote-customer, .quote-bottom { flex-direction: column; gap: 15px; }
+            .quote-summary-table { width: 100%; }
+            .quote-signatures { flex-direction: column; gap: 30px; }
+            .sign-box { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 class="main-title">ปิดไว</h1>
+    <h2 class="sub-title">เครื่องมือคำนวณต้นทุน Mortar ครบชุด</h2>
+
+    <!-- เมนูสลับหน้า -->
+    <div class="tab-menu">
+        <button class="tab-btn active" onclick="switchPage('calculator-page', this)">📊 หน้าคำนวณต้นทุน</button>
+        <button class="tab-btn" onclick="switchPage('quotation-page', this)">📄 ใบเสนอราคา</button>
+    </div>
+
+    <!-- ================= หน้าที่ 1: เครื่องมือคำนวณ ================= -->
+    <div id="calculator-page" class="page-content active">
+        
+        <!-- ข้อมูลโครงการและลูกค้า -->
+        <div class="shared-inputs" style="background: #e3f2fd; border: 1px solid #90caf9; margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="projectName">ชื่อโครงการ</label>
+                <input type="text" id="projectName" placeholder="ระบุชื่อโครงการ" oninput="syncCustomerData()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="companyName">ชื่อบริษัท/ผู้รับเหมา</label>
+                <input type="text" id="companyName" placeholder="ระบุชื่อบริษัทหรือผู้รับเหมา" oninput="syncCustomerData()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="usageVolume">ปริมาณการใช้สินค้า (ตัน)</label>
+                <input type="number" id="usageVolume" placeholder="ระบุปริมาณ (ตัน)" oninput="syncCustomerData()">
+            </div>
+        </div>
+
+        <div class="shared-inputs">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="customerType">กลุ่มลูกค้า</label>
+                <select id="customerType" onchange="autoAdjustDefaults()">
+                    <option value="retail">ลูกค้าทั่วไป</option>
+                    <option value="focus">ลูกค้าโฟกัส</option>
+                    <option value="project">ลูกค้าโครงการ</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="margin">กำไรผู้แทนจำหน่าย (%)</label>
+                <input type="number" id="margin" value="105" step="1" oninput="calculate()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="lumpSumTransport">ขนส่งเหมาเที่ยว รวม VAT</label>
+                <input type="number" id="lumpSumTransport" value="11000" oninput="calculate()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="truckCapacity">น้ำหนักบรรทุก (ตัน)</label>
+                <input type="number" id="truckCapacity" value="32" step="0.1" oninput="calculate()">
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="baseCost">ต้นทุนก่อน VAT (บาท/ตัน)</label>
+                <input type="text" id="baseCost" value="0.00" readonly>
+            </div>
+        </div>
+
+        <!-- 1. หมวดปูนฉาบ -->
+        <h3 class="category-title">หมวดสินค้า ปูนฉาบ (50 kg / ถุง) <span class="toggle-btn" onclick="toggleSection(this)">▼ ซ่อน</span></h3>
+        <div class="products-grid">
+            <div class="product-panel">
+                <h3 class="title-light-green">ปูนฉาบทั่วไป</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TPI</label><input type="number" id="gn_tpiPrice" value="96" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด Dura</label><input type="number" id="gn_duraPrice" value="93" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="gn_transport" min="1000" max="4000" step="10" value="1520" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-light-green"><span id="gn_transportLabel">1,520</span> บาท</div></div>
+                <div class="result-card bg-light-green"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="gn_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="gn_agentCost">0.00</strong></div><div><span>Gap เทียบ TPI</span> <strong id="gn_tpiGap">0.00</strong></div><div><span>Gap เทียบ Dura</span> <strong id="gn_duraGap">0.00</strong></div></div>
+            </div>
+            
+            <div class="product-panel">
+                <h3 class="title-blue">ปูนฉาบมวลเบา</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TPI</label><input type="number" id="lw_tpiPrice" value="101" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด Dura</label><input type="number" id="lw_duraPrice" value="106" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="lw_transport" min="1000" max="4000" step="10" value="1660" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-blue"><span id="lw_transportLabel">1,660</span> บาท</div></div>
+                <div class="result-card bg-blue"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="lw_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="lw_agentCost">0.00</strong></div><div><span>Gap เทียบ TPI</span> <strong id="lw_tpiGap">0.00</strong></div><div><span>Gap เทียบ Dura</span> <strong id="lw_duraGap">0.00</strong></div></div>
+            </div>
+        </div>
+
+        <!-- 2. หมวดปูนก่อ -->
+        <h3 class="category-title">หมวดสินค้า ปูนก่อ (50 kg / ถุง) <span class="toggle-btn" onclick="toggleSection(this)">▼ ซ่อน</span></h3>
+        <div class="products-grid">
+            <div class="product-panel">
+                <h3 class="title-light-green">ปูนก่อทั่วไป</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TPI</label><input type="number" id="b_gn_tpiPrice" value="0" step="0.01" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด Dura</label><input type="number" id="b_gn_duraPrice" value="0" step="0.01" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="b_gn_transport" min="1000" max="5000" step="10" value="1370" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-light-green"><span id="b_gn_transportLabel">1,370</span> บาท</div></div>
+                <div class="result-card bg-light-green"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="b_gn_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="b_gn_agentCost">0.00</strong></div><div><span>Gap เทียบ TPI</span> <strong id="b_gn_tpiGap">0.00</strong></div><div><span>Gap เทียบ Dura</span> <strong id="b_gn_duraGap">0.00</strong></div></div>
+            </div>
+            
+            <div class="product-panel">
+                <h3 class="title-blue">ปูนก่อมวลเบา</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TPI</label><input type="number" id="b_lw_tpiPrice" value="0" step="0.01" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด Dura</label><input type="number" id="b_lw_duraPrice" value="0" step="0.01" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="b_lw_transport" min="1000" max="6000" step="10" value="2770" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-blue"><span id="b_lw_transportLabel">2,770</span> บาท</div></div>
+                <div class="result-card bg-blue"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="b_lw_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="b_lw_agentCost">0.00</strong></div><div><span>Gap เทียบ TPI</span> <strong id="b_lw_tpiGap">0.00</strong></div><div><span>Gap เทียบ Dura</span> <strong id="b_lw_duraGap">0.00</strong></div></div>
+            </div>
+        </div>
+
+        <!-- 3. หมวดปูนจับเซี้ยม -->
+        <h3 class="category-title">หมวดสินค้า ปูนจับเซี้ยม (50 kg / ถุง) <span class="toggle-btn" onclick="toggleSection(this)">▼ ซ่อน</span></h3>
+        <div class="products-grid">
+            <div class="product-panel">
+                <h3 class="title-orange">เสือจับเซี้ยม</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TPI</label><input type="number" id="cm_cm_tpiPrice" value="105" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด Dura</label><input type="number" id="cm_cm_duraPrice" value="0" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="cm_cm_transport" min="1000" max="8000" step="10" value="2100" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-orange"><span id="cm_cm_transportLabel">2,100</span> บาท</div></div>
+                <div class="result-card bg-orange"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="cm_cm_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="cm_cm_agentCost">0.00</strong></div><div><span>Gap เทียบ TPI</span> <strong id="cm_cm_tpiGap">0.00</strong></div><div><span>Gap เทียบ Dura</span> <strong id="cm_cm_duraGap">0.00</strong></div></div>
+            </div>
+        </div>
+
+        <!-- 4. หมวดกาวซีเมนต์ -->
+        <h3 class="category-title">หมวดสินค้า กาวซีเมนต์ (20 kg / ถุง) <span class="toggle-btn" onclick="toggleSection(this)">▼ ซ่อน</span></h3>
+        <div class="products-grid">
+            <div class="product-panel">
+                <h3 class="title-dark-green">เสือ กาวซีเมนต์ สีเขียว 20 kg.<br><span style="font-size: 14px; font-weight: 400;">(เซรามิก แกรนิตโต้)</span></h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด จระเข้ เขียว</label><input type="number" id="g_gr_tpiPrice" value="209" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด คู่แข่ง 2</label><input type="number" id="g_gr_duraPrice" value="0" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="g_gr_transport" min="2000" max="8000" step="10" value="4720" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-dark-green"><span id="g_gr_transportLabel">4,720</span> บาท</div></div>
+                <div class="result-card bg-dark-green"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="g_gr_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="g_gr_agentCost">0.00</strong></div><div><span>Gap เทียบ จระเข้ เขียว</span> <strong id="g_gr_tpiGap">0.00</strong></div><div><span>Gap เทียบ คู่แข่ง 2</span> <strong id="g_gr_duraGap">0.00</strong></div></div>
+            </div>
+
+            <div class="product-panel">
+                <h3 class="title-pink">เสือ กาวซีเมนต์ สีชมพู 20 kg.<br><span style="font-size: 14px; font-weight: 400;">(เซรามิค แกรนิตโต้ หินอ่อน)</span></h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด คู่แข่ง</label><input type="number" id="g_pk_tpiPrice" value="0" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด คู่แข่ง 2</label><input type="number" id="g_pk_duraPrice" value="0" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="g_pk_transport" min="2000" max="8000" step="10" value="6920" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-pink"><span id="g_pk_transportLabel">6,920</span> บาท</div></div>
+                <div class="result-card bg-pink"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="g_pk_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="g_pk_agentCost">0.00</strong></div><div><span>Gap เทียบ คู่แข่ง</span> <strong id="g_pk_tpiGap">0.00</strong></div><div><span>Gap เทียบ คู่แข่ง 2</span> <strong id="g_pk_duraGap">0.00</strong></div></div>
+            </div>
+        </div>
+
+        <!-- 5. หมวดปูนสกิมโค้ท -->
+        <h3 class="category-title">หมวดสินค้า ปูนสกิมโค้ท (20 kg / ถุง) <span class="toggle-btn" onclick="toggleSection(this)">▼ ซ่อน</span></h3>
+        <div class="products-grid">
+            <div class="product-panel">
+                <h3 class="title-cream">เสือสกิมโค้ด 20 kg. (สีขาว)</h3>
+                <div class="grid-2">
+                    <div class="form-group"><label>ราคาตลาด TOA 110</label><input type="number" id="sk_wh_tpiPrice" value="268" step="0.01" oninput="calculate()"></div>
+                    <div class="form-group"><label>ราคาตลาด ลูกดิ่งเหลือง</label><input type="number" id="sk_wh_duraPrice" value="275" step="0.01" oninput="calculate()"></div>
+                </div>
+                <div class="form-group"><label>ราคาบาท/ตัน (ต้นทุนหน้าตั๋ว)</label><input type="range" id="sk_wh_transport" min="4000" max="12000" step="10" value="8320" oninput="updateTransportLabels(); calculate()"><div class="slider-value text-cream"><span id="sk_wh_transportLabel">8,320</span> บาท</div></div>
+                <div class="result-card bg-cream"><h4>ราคาขายหน้างาน (บาท/ถุง)</h4><div class="price"><span id="sk_wh_sellingPrice">0</span></div></div>
+                <div class="details"><div><span>ต้นทุนเอเย่นต์ (บาท/ถุง)</span> <strong id="sk_wh_agentCost">0.00</strong></div><div><span>Gap เทียบ TOA 110</span> <strong id="sk_wh_tpiGap">0.00</strong></div><div><span>Gap เทียบ ลูกดิ่งเหลือง</span> <strong id="sk_wh_duraGap">0.00</strong></div></div>
+            </div>
+        </div>
+
+    </div> <!-- จบหน้าที่ 1 -->
+
+    <!-- ================= หน้าที่ 2: ใบเสนอราคา ================= -->
+    <div id="quotation-page" class="page-content">
+        
+        <!-- Header Controls in Quotation Page -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <div>
+                <label style="font-size: 15px; color: #d9534f; cursor: pointer; font-weight: 500;">
+                    <input type="checkbox" id="hideZero" onchange="renderQuotation()"> 👁️ ซ่อนสินค้ารายการที่จำนวนเป็น 0 (สำหรับพิมพ์)
+                </label>
+            </div>
+            <button class="btn-pdf" onclick="exportPDF()">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/></svg>
+                ดาวน์โหลดเป็น PDF
+            </button>
+        </div>
+
+        <!-- พื้นที่สำหรับการ Print PDF -->
+        <div class="quotation-panel" id="print-area">
+            <div class="quote-header">
+                <div class="quote-title">
+                    <h2>ใบเสนอราคา / Quotation</h2>
+                    <p>
+                        <strong>บริษัท เอสซีจี ดิสทริบิวชั่น จำกัด</strong><br>
+                        1 ถนน ปูนซิเมนต์ไทย, บางซื่อ กรุงเทพมหานคร 10800
+                    </p>
+                </div>
+                <div class="quote-info">
+                    <table>
+                        <tr><th width="80">เลขที่</th><td id="quoteNo">QT-SCG-000000</td></tr>
+                        <tr><th>วันที่</th><td id="quoteDate">--/--/----</td></tr>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="quote-customer">
+                <div>
+                    <strong>กลุ่มลูกค้า (Sold To):</strong> <span id="displayCustomerType">ลูกค้าทั่วไป</span><br>
+                    <strong>บริษัท/ผู้รับเหมา:</strong> <span id="displayCompanyName">-</span><br>
+                    <strong>ชื่อโครงการ:</strong> <span id="displayProjectName">-</span><br>
+                    <strong>ปริมาณการใช้สินค้าประเมิน:</strong> <span id="displayUsageVolume">-</span> ตัน
+                </div>
+                <div>
+                    <strong>ผู้แทนขาย:</strong> งานโครงการ SCG<br>
+                    <strong>เงื่อนไขชำระเงิน:</strong> เงินสด
+                </div>
+            </div>
+
+            <table class="quote-table">
+                <thead>
+                    <tr>
+                        <th width="8%">ลำดับ</th>
+                        <th width="44%">รายละเอียดสินค้า</th>
+                        <th width="12%">จำนวน</th>
+                        <th width="8%">หน่วย</th>
+                        <th width="14%">หน่วยละ (บาท)</th>
+                        <th width="14%">จำนวนเงิน (บาท)</th>
+                    </tr>
+                </thead>
+                <tbody id="quotationBody">
+                    <!-- Data injected via JS -->
+                </tbody>
+            </table>
+
+            <div class="quote-bottom">
+                <div class="quote-notes">
+                    <strong>หมายเหตุ :</strong><br>
+                    - สั่งซื้อผ่านผู้แทนจำหน่าย SCG เท่านั้น<br>
+                    - ราคาไม่รวมค่าขนส่งถึงโครงการ<br>
+                    - ตรวจสอบราคากับผู้แทนขายก่อนสั่งซื้อทุกครั้ง
+                </div>
+                
+                <table class="quote-summary-table">
+                    <tr><td>มูลค่าสินค้า</td><td id="quoteSubtotal">0.00</td></tr>
+                    <tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td id="quoteVat">0.00</td></tr>
+                    <tr><td class="grand-total">ยอดรวม</td><td class="grand-total" id="quoteTotal">0.00</td></tr>
+                </table>
+            </div>
+
+            <div class="quote-signatures">
+                <div class="sign-box">
+                    <div class="sign-line"></div>
+                    <p>ลงชื่อ......................................................<br>ผู้สั่งซื้อ</p>
+                </div>
+                <div class="sign-box">
+                    <div class="sign-line"></div>
+                    <p>ลงชื่อ <input type="text" class="sign-input" placeholder="(พิมพ์ชื่อผู้แทนขาย)"></p>
+                    <p>ผู้แทนขายงานโครงการ SCG</p>
+                </div>
+            </div>
+        </div> <!-- จบพื้นที่ Print -->
+    </div> <!-- จบหน้าที่ 2 -->
+
+</div>
+
+<script>
+    // ตั้งค่าวันที่ และ สุ่มเลขที่ใบเสนอราคา (Random 6 หลัก)
+    const today = new Date();
+    document.getElementById('quoteDate').innerText = today.toLocaleDateString('th-TH');
+    const randomQuoteNumber = 'QT-SCG-' + Math.floor(100000 + Math.random() * 900000);
+    document.getElementById('quoteNo').innerText = randomQuoteNumber;
+
+    const quoteItems = [
+        { id: 'gn', name: 'เสือฉาบทั่วไป 50 kg.', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'lw', name: 'เสือฉาบมวลเบา 50 kg.', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'b_gn', name: 'เสือก่อทั่วไป 50 kg.', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'b_lw', name: 'เสือก่อมวลเบา 50 kg.', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'cm_cm', name: 'เสือจับเซี้ยม 50 kg.', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'g_gr', name: 'เสือ กาวซีเมนต์ สีเขียว 20 kg. (เซรามิก แกรนิตโต้)', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'g_pk', name: 'เสือ กาวซีเมนต์ สีชมพู 20 kg. (เซรามิค แกรนิตโต้ หินอ่อน)', price: 0, qty: 1, unit: 'ถุง' },
+        { id: 'sk_wh', name: 'เสือสกิมโค้ด 20 kg. (สีขาว)', price: 0, qty: 1, unit: 'ถุง' }
+    ];
+
+    const productConfigs = [
+        { prefix: 'lw', unitPerTon: 20 }, 
+        { prefix: 'gn', unitPerTon: 20 },
+        { prefix: 'b_gn', unitPerTon: 20 }, 
+        { prefix: 'b_lw', unitPerTon: 20 },
+        { prefix: 'cm_cm', unitPerTon: 20 }, 
+        { prefix: 'g_gr', unitPerTon: 50 }, 
+        { prefix: 'g_pk', unitPerTon: 50 }, 
+        { prefix: 'sk_wh', unitPerTon: 50 } 
+    ];
+
+    function switchPage(pageId, btnElement) {
+        document.querySelectorAll('.page-content').forEach(page => page.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        btnElement.classList.add('active');
+    }
+
+    function toggleSection(btn) {
+        const grid = btn.parentElement.nextElementSibling;
+        if (grid.style.display === 'none') {
+            grid.style.display = 'grid';
+            btn.innerText = '▼ ซ่อน';
+        } else {
+            grid.style.display = 'none';
+            btn.innerText = '▶ แสดง';
+        }
+    }
+    
+    // ฟังก์ชันอัปเดตข้อมูลลูกค้าไปยังใบเสนอราคา
+    function syncCustomerData() {
+        const projectName = document.getElementById('projectName').value;
+        const companyName = document.getElementById('companyName').value;
+        const usageVolume = document.getElementById('usageVolume').value;
+
+        document.getElementById('displayProjectName').innerText = projectName || '-';
+        document.getElementById('displayCompanyName').innerText = companyName || '-';
+        document.getElementById('displayUsageVolume').innerText = usageVolume || '-';
+    }
+
+    // เรนเดอร์ใบเสนอราคา พร้อมฟังก์ชันซ่อนรายการที่จำนวนเป็น 0
+    function renderQuotation() {
+        const tbody = document.getElementById('quotationBody');
+        tbody.innerHTML = '';
+        
+        const hideZeroQty = document.getElementById('hideZero') ? document.getElementById('hideZero').checked : false;
+        
+        let indexCount = 1;
+        quoteItems.forEach((item) => {
+            // ถ้าเลือกฟังก์ชันซ่อน และจำนวนสินค้า <= 0 จะทำการข้ามการสร้างบรรทัดนี้ไป
+            if (hideZeroQty && item.qty <= 0) return;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${indexCount++}</td>
+                <td>${item.name}</td>
+                <td><input type="number" class="quote-input" min="0" value="${item.qty}" oninput="updateQuoteQty('${item.id}', this.value)"></td>
+                <td>${item.unit}</td>
+                <td id="price_${item.id}">0.00</td>
+                <td id="amount_${item.id}">0.00</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        calculateQuotation(); // อัปเดตราคาใหม่หลังสร้าง DOM เสร็จ
+    }
+
+    function updateQuoteQty(id, value) {
+        const item = quoteItems.find(i => i.id === id);
+        if (item) {
+            item.qty = parseFloat(value) || 0;
+            calculateQuotation();
+        }
+    }
+
+    // ฟังก์ชันคำนวณราคาในใบเสนอราคา มีเงื่อนไขเช็คจำนวน
+    function calculateQuotation() {
+        let total = 0;
+        quoteItems.forEach(item => {
+            const displayPrice = (item.qty > 0) ? item.price : 0;
+            const amount = item.qty * displayPrice;
+            
+            const amountEl = document.getElementById(`amount_${item.id}`);
+            const priceEl = document.getElementById(`price_${item.id}`);
+            
+            // เช็คว่าหา Element เจอไหม (เพราะถ้าโดนซ่อนอยู่จะหาไม่เจอ)
+            if (amountEl) amountEl.innerText = amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            if (priceEl) priceEl.innerText = displayPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            total += amount;
+        });
+
+        const beforeVat = total / 1.07;
+        const vat = total - beforeVat;
+
+        document.getElementById('quoteSubtotal').innerText = beforeVat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('quoteVat').innerText = vat.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('quoteTotal').innerText = total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    }
+
+    // ฟังก์ชันจัดการค่า Default 
+    function autoAdjustDefaults() {
+        const customerSelect = document.getElementById('customerType');
+        const custType = customerSelect.value;
+        document.getElementById('displayCustomerType').innerText = customerSelect.options[customerSelect.selectedIndex].text;
+        
+        if (custType === 'focus') { 
+            document.getElementById('margin').value = 103; 
+            // อัปเดตราคาบาท/ตัน ปูนฉาบทั่วไป ตามที่ร้องขอเป็น 1500
+            document.getElementById('gn_transport').value = 1500;
+            document.getElementById('lw_transport').value = 1600;
+        } else if (custType === 'project') {
+            // ค่า Default กลุ่มลูกค้าโครงการ
+            document.getElementById('margin').value = 105; 
+            document.getElementById('gn_transport').value = 1520;
+            document.getElementById('lw_transport').value = 1660;
+        } else { 
+            // ค่า Default ลูกค้าทั่วไป
+            document.getElementById('margin').value = 105; 
+            document.getElementById('gn_transport').value = 1520;
+            document.getElementById('lw_transport').value = 1660;
+        }
+        
+        updateTransportLabels();
+        calculate();
+    }
+
+    function updateTransportLabels() {
+        productConfigs.forEach(cfg => {
+            const el = document.getElementById(cfg.prefix + '_transport');
+            if(el) { document.getElementById(cfg.prefix + '_transportLabel').innerText = Number(el.value).toLocaleString(); }
+        });
+    }
+
+    function calculate() {
+        const lumpSumTransport = parseFloat(document.getElementById('lumpSumTransport').value) || 0;
+        const truckCapacity = parseFloat(document.getElementById('truckCapacity').value) || 1; 
+        const calculatedBaseCostPerTon = (lumpSumTransport / 1.07) / truckCapacity;
+        document.getElementById('baseCost').value = calculatedBaseCostPerTon.toFixed(2);
+
+        const marginValue = parseInt(document.getElementById('margin').value, 10) || 100; 
+        const marginMultiplier = marginValue / 100;
+        const vatRate = 1.07;
+
+        productConfigs.forEach(cfg => {
+            const prefix = cfg.prefix;
+            const unitPerTon = cfg.unitPerTon;
+            const transportEl = document.getElementById(prefix + '_transport');
+            const tpiPriceEl = document.getElementById(prefix + '_tpiPrice');
+            const duraPriceEl = document.getElementById(prefix + '_duraPrice');
+            
+            if(!transportEl || !tpiPriceEl || !duraPriceEl) return;
+
+            const transport = parseFloat(transportEl.value) || 0;
+            const tpiPrice = parseFloat(tpiPriceEl.value) || 0;
+            const duraPrice = parseFloat(duraPriceEl.value) || 0;
+            
+            let totalCostPerTon = (transport + calculatedBaseCostPerTon) * vatRate;
+            let agentCost = totalCostPerTon / unitPerTon;
+            let sellingPrice = agentCost * marginMultiplier;
+            
+            if(unitPerTon === 20 || unitPerTon === 50) { sellingPrice = Math.round(sellingPrice); }
+            
+            let tpiGap = tpiPrice - sellingPrice;
+            let duraGap = duraPrice - sellingPrice;
+
+            document.getElementById(prefix + '_sellingPrice').innerText = sellingPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById(prefix + '_agentCost').innerText = agentCost.toFixed(2);
+            
+            const tpiGapEl = document.getElementById(prefix + '_tpiGap');
+            tpiGapEl.innerText = tpiGap.toFixed(2);
+            tpiGapEl.style.color = tpiGap < 0 ? '#dc3545' : '#198754'; 
+            
+            const duraGapEl = document.getElementById(prefix + '_duraGap');
+            duraGapEl.innerText = duraGap.toFixed(2);
+            duraGapEl.style.color = duraGap < 0 ? '#dc3545' : '#198754';
+
+            const quoteItem = quoteItems.find(i => i.id === prefix);
+            if(quoteItem) { quoteItem.price = sellingPrice; }
+        });
+
+        calculateQuotation();
+    }
+
+    function exportPDF() {
+        const element = document.getElementById('print-area');
+        element.classList.add('pdf-mode');
+
+        const opt = {
+            margin:       10,
+            filename:     document.getElementById('quoteNo').innerText + '.pdf',
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+            element.classList.remove('pdf-mode');
+        });
+    }
+
+    renderQuotation();
+    calculate();
+</script>
+
+</body>
+</html>
